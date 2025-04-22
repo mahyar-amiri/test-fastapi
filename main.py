@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Any
 
 from fastapi import FastAPI, Request
 
@@ -6,20 +6,30 @@ app = FastAPI()
 
 
 @app.get("/")
-def read_root(request: Request):
-    """
-    Inspect the incoming request and return some diagnostic details.
-    """
+async def info(request: Request) -> dict[str, Any]:
+    # Note: reading the body in a GET handler is unusual but possible
+    body_bytes = await request.body()
+
     return {
-        "client_ip": request.client.host,  # Source IP address
-        "server_host": request.url.hostname,  # Host part of the URL
-        "full_url": str(request.url),  # Whole URL that was hit
-        "user_agent": request.headers.get("user-agent", "unknown"),
+        # Basic connection data
+        "client": {
+            "ip": request.client.host,
+            "port": request.client.port,
+        },
+        # URL & routing
+        "full_url": str(request.url),
+        "path": request.url.path,
+        "query_string": request.url.query,
+        "method": request.method,
+        "http_version": request.scope.get("http_version"),
+        # Headers & cookies
+        "headers": dict(request.headers),
+        "cookies": request.cookies,
+        # Body (bytes → str just for demo)
+        "raw_body": body_bytes.decode("utf‑8", errors="ignore"),
+        # Environment / server info
+        "server": request.scope.get("server"),  # (host, port) tuple
+        "scheme": request.url.scheme,  # "http" / "https"
+        # Anything custom you stashed earlier
+        "state": request.state.__dict__,  # e.g. request.state.user_id
     }
-
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
-
-    
