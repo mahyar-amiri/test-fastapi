@@ -2,6 +2,7 @@ from typing import Any
 
 import httpx
 from fastapi import FastAPI, Request
+from user_agents import parse
 
 app = FastAPI()
 
@@ -22,12 +23,18 @@ async def info(request: Request) -> dict[str, Any]:
     user_agent_str = request.headers.get("user-agent", "")
     user_agent = parse(user_agent_str)
 
+    client_ip = request.client.host
+    host_header = (request.headers.get("origin") or request.headers.get("referer") or "").split("://")[-1].split("/")[0].lower()
+
     return {
+        "A-client_ip": client_ip,
+        "A-host_header": host_header,
+        "A-Headers": str(request.headers),
         # Basic connection data
         "client": {
             "ip": request.client.host,
             "port": request.client.port,
-            "geo": get_geo_info(request.client.host),
+            "geo": await get_geo_info(request.client.host),
         },
         # URL & routing
         "full_url": str(request.url),
